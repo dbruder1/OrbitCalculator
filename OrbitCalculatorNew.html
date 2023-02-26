@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+    <style>
+        .Info {            
+            position: absolute;
+            top: 1vw;
+            right: 1vw;
+            background-color: rgba(48, 48, 48, 0.8); 
+            color:lightgrey; 
+            border-radius: 1vw; 
+            width:20vw;
+            padding: 1vw;
+            font-family: Helvetica;
+            font-size: 1vw;
+        }
+        .Input {            
+            position: absolute;
+            top: 1vw;
+            left: 1vw;
+            background-color: rgba(48, 48, 48, 0.8); 
+            color:lightgrey; 
+            border-radius: 1vw; 
+            width:25vw;
+            padding: 1vw;
+            padding-right: 0vw;
+            font-family: Helvetica;
+            font-size: 1vw;
+        }
+        .Text {
+            color:lightgrey; 
+            margin: 2%;
+            font-family: Helvetica;
+            font-size: 1vw;
+            width:5vw;
+            border-radius:0.5vw 0vw 0vw 0.5vw;
+            background-color: #424242;
+            border:#424242;  
+        }
+        .Button, select {
+            color:lightgrey; 
+            margin: 2%;
+            margin-left: 0%;
+            font-family: Helvetica;
+            font-size: 1vw;
+            border-radius: 0.5vw; 
+            background-color: #424242;
+            border:#424242; 
+        } 
+        .Button:hover, select:hover {
+            color:white; 
+            margin: 2%;
+            margin-left: 0%;
+            font-family: Helvetica;
+            font-size: 1vw;
+            border-radius: 0.5vw; 
+            background-color: #4f4f4f;
+            border:#4f4f4f; 
+        } 
+
+        
+    </style>
+
+    <title> Umlaufbahnen </title>
+
+    <body style="margin: 0; overflow: hidden;">
+    
+        <div class="Info"> 
+            <p> <h3> Informationen zur Umlaufbahn </h3> </p>
+            <p id="ApInfo"> Apoapsis:</p>
+            <p id="PeInfo"> Periapsis:</p>
+            <p id="SMAInfo"> Große Halbachse:</p>
+            <p id="SMiAInfo"> Kleine Halbachse:</p>
+            <p id="EccInfo"> Exzentrizität: </p>
+            <p id="OrbitalPeriod"> Umlaufsdauer:</p>
+            <p id="SpeedAp"> Geschwindigkeit (Apoapsis): </p>
+            <p id="SpeedPe"> Geschwindigkeit (Periapsis): </p>
+        </div>
+        
+        <form class="Input">
+            <h3> Eingabe </h3>
+            Himmelskörper:
+            <select id="planet"> 
+                <option value="sonne"> Sonne </option>
+                <option value="merkur"> Merkur </option>
+                <option value="venus"> Venus </option>
+                <option value="erde" selected> Erde </option>
+                <option value="mond"> Mond </option>
+                <option value="mars"> Mars </option>
+                <option value="jupiter"> Jupiter </option>
+                <option value="saturn"> Saturn </option>
+                <option value="uranus"> Uranus </option>
+                <option value="neptun"> Neptun </option>
+                <option value="pluto"> Pluto </option>
+            </select> <br>
+
+            Eingabemodus:
+            <select id="InputMode"> 
+                <option value="ApPe"> Apoapsis + Periapsis </option>
+                <option value="HeightSpeed"> Höhe + Geschwindigkeit </option>
+            </select> <br>
+
+            <p id="ApOrHeight" style="display:inline"> Apoapsis (Höchster Punkt): </p>
+            <input type="number" id="ApInput" class="Text" value="408"> km <br>
+
+            <p id="PeOrSpeed" style="display:inline"> Periapsis (Niedrigster Punkt): </p>
+            <input type="number" id="PeInput" class="Text" value="408"> <p id="KmOrMs" style="display:inline"> km </p> <br>
+
+            <p id="ExamplesText" style="display:inline"> Beispiele: </p>
+            <select id="Examples" style="font-size:1vw;"> 
+                <option value="iss"> ISS </option>
+                <option value="sputnik"> Sputnik I </option>
+                <option value="geosynchronous"> Geosynchrone Umlaufbahn </option>
+                <option value="moon"> Mond (Durchschnitt) </option>
+            </select> <br>
+
+            <h4> Triebwerkszündung </h4>
+            
+            Ort:
+            <select id="ManeuverApPe" style="font-size:1vw;"> 
+                <option value="Periapsis"> Periapsis </option>
+                <option value="Apoapsis"> Apoapsis </option>
+            </select> <br>
+
+            <p style="display:inline"> Geschwindigkeitsänderung: </p>
+            <input type="number" id="ManeuverSpeed" class="Text" value="0"> m/s <br>
+
+            <input type="button" id="PerformManeuver" value="Änderung durchführen" class="Button">  </input>
+        </form>
+
+        <canvas id = "Canvas"></canvas>
+
+    </body>
+
+    <script>
+        //Variablen werden hier deklariert, um sie global verwenden zu können
+        var Apoapsis;
+        var Periapsis;
+        var PlanetRadius; 
+        var PlanetMass;
+        var LinearEcc;
+        var SemiMajorAxis;
+        var SemiMinorAxis;
+        var OrbitalPeriod;
+        var SpeedApoapsis; 
+        var SpeedPeriapsis;
+
+        var height;
+        var width;
+        var Zoom = 0.7; //Hauptsächlich zu Testzwecken hier, um schnell den "Zoom" zu ändern
+        var ConversionFactor;
+        var PlanetScreenRadius;
+        var RatioAToB;
+        var EllipseRadiusX
+        var EllipseRadiuxY
+
+        var Height;
+        var Speed;
+
+        //Diese Funktion zeigt den Planeten und die Umlaufbahn an
+        function Update() {
+            //Die Beispiel-Orbits werden nur angezeigt, wenn man die Erde als Planet auswählt
+            if(document.getElementById("planet").value == "erde") {
+                document.getElementById("Examples").style.display = "inline";
+                document.getElementById("ExamplesText").style.display = "inline";
+            }
+            else {
+                document.getElementById("Examples").style.display = "none";
+                document.getElementById("ExamplesText").style.display = "none";
+            }
+
+            //Hier werden einfach Werte wie Radius und Masse angepasst, je nachdem welchen Planeten man wählt
+            switch (document.getElementById("planet").value) {
+                case "sonne": 
+                    PlanetRadius = 696340; 
+                    PlanetMass = 1.989 * Math.pow(10,30);
+                    break;
+                case "merkur": 
+                    PlanetRadius = 2439; 
+                    PlanetMass = 3.285 * Math.pow(10,23);
+                    break;
+                case "venus": 
+                    PlanetRadius = 6051; 
+                    PlanetMass = 4.867 * Math.pow(10,24);
+                    break;
+                case "erde": 
+                    PlanetRadius = 6371; 
+                    PlanetMass = 5.972 * Math.pow(10,24);
+                    break;
+                case "mond": 
+                    PlanetRadius = 1737; 
+                    PlanetMass = 7.3483 * Math.pow(10,22);
+                    break;
+                case "mars": 
+                    PlanetRadius = 3389; 
+                    PlanetMass = 6.417 * Math.pow(10,23);
+                    break;
+                case "jupiter": 
+                    PlanetRadius = 69911; 
+                    PlanetMass = 1.898 * Math.pow(10,27);
+                    break;
+                case "saturn": 
+                    PlanetRadius = 58232;
+                    PlanetMass = 5.683 * Math.pow(10,26); 
+                    break;
+                case "uranus": 
+                    PlanetRadius = 25362;
+                    PlanetMass = 8.681 * Math.pow(10,25); 
+                    break;
+                case "neptun": 
+                    PlanetRadius = 24622; 
+                    PlanetMass = 1.024 * Math.pow(10,26);
+                    break;
+                case "pluto": 
+                    PlanetRadius = 1188; 
+                    PlanetMass = 1.303 * Math.pow(10,22);
+                    break;
+            }
+
+            //Je nachdem welcher Modus gewählt ist wird hier die Große Halbachse anhand der Eingabe berechnet
+            //Hier im Eingabemodus "Apoapsis + Periapsis"
+            if(document.getElementById("InputMode").value == "ApPe") {
+                //Bezeichnung der Eingabefelder wird angepasst
+                document.getElementById("ApOrHeight").innerHTML = "Apoapsis (Höchster Punkt):";
+                document.getElementById("PeOrSpeed").innerHTML = "Periapsis (Niedrigster Punkt):";
+                document.getElementById("KmOrMs").innerHTML = "km";
+
+                //Apoapsis und Periapsis bekommen den Wert der Eingabefelder zugewiesen
+                Apoapsis = Number(document.getElementById("ApInput").value);
+                Periapsis = Number(document.getElementById("PeInput").value);
+
+                //Prüfung, ob die Werte auch valide sind
+                if(Periapsis > Apoapsis) {
+                    window.alert("Apoapsis muss größer als Periapsis sein");
+                    Periapsis = Apoapsis;
+                    document.getElementById("PeInput").value = Number(document.getElementById("ApInput").value);
+                }
+                if(Periapsis < -PlanetRadius) {
+                    window.alert("Periapsis kann nicht unter dem Mittelpunkt des Planeten sein");
+                    Periapsis = 0;
+                    document.getElementById("PeInput").value = -PlanetRadius;
+                }
+                if(Apoapsis < 0) {
+                    window.alert("Apoapsis muss positiv sein");
+                    Apoapsis = 0;
+                    document.getElementById("ApInput").value = 0;
+                }
+
+                //Große Halbachse wird berechnet
+                SemiMajorAxis = (Apoapsis + Periapsis + PlanetRadius * 2) / 2;
+            } 
+            //Hier im Modus "Höhe + Geschwindigkeit"
+            else {
+                //Bezeichnung der Eingabefelder wird angepasst
+                document.getElementById("ApOrHeight").innerHTML = "Höhe:";
+                document.getElementById("PeOrSpeed").innerHTML = "Geschwindigkeit:";
+                document.getElementById("KmOrMs").innerHTML = "m/s";
+
+                //Höhe und Geschwindigkeit bekommen den Wert des jeweiligen Eingabefeldes
+                Height = Number(document.getElementById("ApInput").value);
+                Speed = Number(document.getElementById("PeInput").value);
+
+                //Überprüfen ob die Werte gültig sind
+                if(Height < 0) {
+                    window.alert("Höhe muss positiv sein");
+                    Periapsis = 0;
+                    document.getElementById("ApInput").value = 0;
+                }
+
+                //Große Halbachse wird anhand der Vis-Viva-Gleichung berechnet
+                SemiMajorAxis = - 1 / (((Speed * Speed) / (6.6743 * Math.pow(10,-11) * PlanetMass)) - (2 / (Height * 1000 + PlanetRadius * 1000))) / 1000;
+
+                //Hier werden noch Apoapsis und Periapsis definiert
+                if(Height + PlanetRadius < SemiMajorAxis) {
+                    Periapsis = Height;
+                    Apoapsis = 2 * SemiMajorAxis - (2 * PlanetRadius + Height);
+                }
+                else {
+                    Apoapsis = Height;
+                    Periapsis = 2 * SemiMajorAxis - (2 * PlanetRadius + Height);
+                }
+            }
+
+            //Die restlichen Werte werden berechnet
+            LinearEcc = SemiMajorAxis - (Periapsis + PlanetRadius);
+            SemiMinorAxis = Math.sqrt(SemiMajorAxis * SemiMajorAxis - LinearEcc * LinearEcc);
+            RatioAToB = SemiMajorAxis / SemiMinorAxis; //Verhältnis der Großen zur Kleinen Halbachse
+            OrbitalPeriod = 2 * Math.PI * Math.sqrt(Math.pow(SemiMajorAxis * 1000 ,3) / (PlanetMass * 6.6743 * Math.pow(10,-11)));
+            SpeedApoapsis = Math.sqrt(6.6743 * Math.pow(10,-11) * PlanetMass * ((2 / ((Apoapsis + PlanetRadius) * 1000)) - (1 / (SemiMajorAxis * 1000))));
+            SpeedPeriapsis = Math.sqrt(6.6743 * Math.pow(10,-11) * PlanetMass * ((2 / ((Periapsis + PlanetRadius) * 1000)) - (1 / (SemiMajorAxis * 1000))));
+
+            //Canvas wird definiert, Größe ist die des Fensters
+            canvas = document.getElementById("Canvas");
+            context = canvas.getContext("2d");
+            canvas.style.height = window.innerHeight + "px";
+            canvas.style.width = window.innerWidth + "px";
+            height = window.innerHeight * window.devicePixelRatio;
+            width = window.innerWidth * window.devicePixelRatio;
+            canvas.height = height;
+            canvas.width = width;
+            
+            //Hintergrund wird schwarz
+            context.fillStyle = "black";
+            context.fillRect(0,0,canvas.width, canvas.height);
+
+            //Wenn eine Geschwindigkeitsänderung eingegeben ist, wird das Manöver angezeigt
+            
+
+
+            //Orbit wird gezeichnet
+            context.beginPath();
+            //Die Umlaufbahn soll nie mehr des Bildschirms einnehmen, als der Zoom Wert besagt
+            //Hier wird überprüft, ob die Höhe der Umlaufbahn diesen Faktor überschreiten würde, falls man die Breite * Zoom als Breite nimmt
+            if(width * Zoom / RatioAToB > Zoom * height) {
+                //Falls ja, ist die Höhe konstant, und die Breite wird daran angepasst
+                EllipseRadiusX = height / 2 * Zoom * RatioAToB;
+                EllipseRadiusY = height / 2 * Zoom;
+            }
+            else {
+                //Falls nein ist die Breite konstant und die Höhe wird angepasst
+                EllipseRadiusX = width / 2 * Zoom;
+                EllipseRadiusY = width / 2 * Zoom / RatioAToB;
+            }
+            //Die Umlaufbahn wird gezeichnet
+            context.ellipse(width / 2, height / 2, EllipseRadiusX, EllipseRadiusY, 0, 0, 2 * Math.PI);
+            //Dieser Faktor wird gebraucht, um km in Pixel zu konvertieren
+            ConversionFactor = EllipseRadiusX / SemiMajorAxis;
+            //Aussehen der Linie
+            context.lineWidth = width/2000;
+            context.setLineDash([0, 0]);
+            context.strokeStyle = "white";
+            context.stroke();
+            
+            console.log("SMA: " + SemiMajorAxis);
+            console.log("SMiA: " + SemiMinorAxis);
+            console.log("Ap: " + Apoapsis);
+            
+            if(document.getElementById("ManeuverSpeed").value != 0) {
+                //Diese Funktion berechnet das Manöver und zeigt es an, wird später definiert
+                Maneuver();
+            }
+
+            context.fillStyle = "white";
+
+            if(Periapsis != Apoapsis) {
+                //Falls die Periapsis größer als 0 ist, soll sie beschriftet werden
+                if(Periapsis > 0) {
+                    //Ein kleiner Kreis wird an der Periapsis angezeigt
+                    context.beginPath();
+                    context.arc(width / 2 + EllipseRadiusX, height / 2, height / 150, 0, 2 * Math.PI);
+                    context.fill();
+
+                    //Der Text
+                    context.font = width / 100 + "px helvetica";
+                    context.textAlign = "start";
+                    context.textBaseline = "middle";
+                    context.fillText("Periapsis", width / 2 + EllipseRadiusX + width / 100, height / 2);
+                }
+
+                
+                //Ein kleiner Kreis wird an der Apoapsis angezeigt
+                context.beginPath();
+                context.arc(width / 2 - EllipseRadiusX, height / 2, height / 150, 0, 2 * Math.PI);
+                context.fill();
+
+                //Text wird angezeigt
+                context.font = width / 100 + "px helvetica";
+                context.textAlign = "end";
+                context.textBaseline = "middle";
+                context.fillText("Apoapsis", width / 2 - EllipseRadiusX - width / 100, height / 2);
+            }
+            
+            //Radius des Planeten in Pixel
+            PlanetScreenRadius = PlanetRadius * ConversionFactor;
+
+            //Planet wird gezeichnet
+            context.beginPath();
+            //Die Lineare Exzentrizität ist der Abstand des Brennpunkts zum Mittelpunkt einer Ellipse. Der Planet wird um diese verschoben, um im Brennpunkt der Umlaufbahn zu sein
+            context.arc(width / 2 + LinearEcc * ConversionFactor, height / 2, PlanetScreenRadius, 0, 2 * Math.PI);
+
+            //Je nach ausgewähltem Planeten wird die Farbe festegelegt
+            switch(document.getElementById("planet").value) {
+                case "sonne": 
+                    context.fillStyle = "#db9942";
+                    break;
+                case "merkur": 
+                    context.fillStyle = "#b5ada5";
+                    break;
+                case "venus": 
+                    context.fillStyle = "#eddbca";
+                    break;
+                case "erde": 
+                    context.fillStyle = "#282552";
+                    break;
+                case "mond": 
+                    context.fillStyle = "#94979c";
+                    break;
+                case "mars": 
+                    context.fillStyle = "#e0552b";
+                    break;
+                case "jupiter": 
+                    context.fillStyle = "#ad8157";
+                    break;
+                case "saturn": 
+                    context.fillStyle = "#e6be75";
+                    break;
+                case "uranus": 
+                    context.fillStyle = "#9ae9ed";
+                    break;
+                case "neptun": 
+                    context.fillStyle = "#6386e0";
+                    break;
+                case "pluto": 
+                    context.fillStyle = "#c9bcb7";
+                    break;
+            }
+            context.fill();
+
+
+            //Hier werden sämtliche Infos zur Umlaufbahn ausgegeben
+            document.getElementById("ApInfo").innerHTML = "Apoapsis: " + Math.round(1000 * Apoapsis) / 1000 + " km";
+            document.getElementById("PeInfo").innerHTML = "Periapsis: " + Math.round(1000 * Periapsis) / 1000 + " km";
+            document.getElementById("SMAInfo").innerHTML = "Große Halbachse: " + Math.round(1000 * SemiMajorAxis) / 1000 + " km";
+            document.getElementById("SMiAInfo").innerHTML = "Kleine Halbachse: " + Math.round(1000 * SemiMinorAxis) / 1000 + " km";
+            document.getElementById("EccInfo").innerHTML = "Exzentrizität: " + Math.round(10000 * LinearEcc / SemiMajorAxis) / 10000;
+            if(Periapsis > 0) {
+                //Je nach Dauer wird die Umlaufzeit in Minuten, Stunden oder Tagen angegeben
+                if(Math.round(1000 * OrbitalPeriod / 3600) / 1000 < 2) {
+                    document.getElementById("OrbitalPeriod").innerHTML = "Umlaufzeit: " + Math.round(1000 * OrbitalPeriod / 3600 * 60) / 1000  + " Minuten";
+                }
+                else if(Math.round(1000 * OrbitalPeriod / 3600) / 1000 < 24) {
+                    document.getElementById("OrbitalPeriod").innerHTML = "Umlaufzeit: " + Math.round(1000 * OrbitalPeriod / 3600) / 1000  + " Stunden";
+                }
+                else {
+                    document.getElementById("OrbitalPeriod").innerHTML = "Umlaufzeit: " + Math.round(1000 * OrbitalPeriod / 3600 / 24) / 1000   + " Tage";
+                }
+            }
+            else {
+                //Ist die Periapsis <= 0, kollidiert die Umlaufbahn mit dem Planeten. Ein Umlauf ist also unmöglich
+                document.getElementById("OrbitalPeriod").innerHTML = "Umlaufzeit: --";
+            }
+            document.getElementById("SpeedAp").innerHTML = "Geschwindigkeit (Apoapsis): " + Math.round(1000 * SpeedApoapsis) / 1000 + " m/s"; 
+            if(Periapsis > 0) {
+                document.getElementById("SpeedPe").innerHTML = "Geschwindigkeit (Periapsis): " + Math.round(1000 * SpeedPeriapsis) / 1000 + " m/s";
+            }
+            else {
+                //Wie oben, gäbe es bei einer Periapsis unter oder bei 0 eine Kollision, womit dort keine Geschwindigkeit angegeben wird
+                document.getElementById("SpeedPe").innerHTML = "Geschwindigkeit (Periapsis): --";
+            }
+        }
+
+        //Variablen für die Manöverberechnung
+        var ApoapsisManeuver;
+        var PeriapsisManeuver;
+        var LinearEccManeuver;
+        var SemiMajorAxisManeuver;
+        var SemiMinorAxisManeuver;
+        var RatioManeuverToOrbitMajor;
+        var RatioAToBManeuver;
+        var Offset;
+        var ManeuverSpeed;
+
+        //Hier wird das Manöver berechnet
+        function Maneuver() {
+            //ManeuverSpeed wird hier der Wert aus dem Eingabefeld zugewiesen
+            ManeuverSpeed = Number(document.getElementById("ManeuverSpeed").value);
+            //Hier wird das Maneuver an der Apoapsis durchgeführt
+            if(document.getElementById("ManeuverApPe").value == "Apoapsis"){
+                //Hier wird wieder die Vis-Viva-Gleichung verwendet, um die Große Halbachse zu berechnen
+                SemiMajorAxisManeuver = - 1 / ((((SpeedApoapsis + ManeuverSpeed) * (SpeedApoapsis + ManeuverSpeed)) / (6.6743 * Math.pow(10,-11) * PlanetMass)) - (2 / (Apoapsis * 1000 + PlanetRadius * 1000))) / 1000;
+                //Hier wird überprüft, die Apoapsis des Orbits auch die des Manövers ist
+                if((SemiMajorAxisManeuver * 2) - (PlanetRadius * 2) - Apoapsis < Apoapsis) {
+                    //Falls ja
+                    ApoapsisManeuver = Apoapsis;
+                    PeriapsisManeuver = (SemiMajorAxisManeuver * 2) - (PlanetRadius * 2) - ApoapsisManeuver;
+                }
+                else {
+                    //Falls nein
+                    PeriapsisManeuver = Apoapsis;
+                    ApoapsisManeuver = (SemiMajorAxisManeuver * 2) - (PlanetRadius * 2) - PeriapsisManeuver;
+                }
+                //Der Offset wird verwendet, um das Manöver am Bildschirm richtig zu positionieren
+                Offset = (SemiMajorAxisManeuver - SemiMajorAxis) * ConversionFactor;
+            } 
+            //Und hier an der Periapsis
+            else {
+                //Hier wird wieder die Vis-Viva-Gleichung verwendet, um die Große Halbachse zu berechnen
+                SemiMajorAxisManeuver = - 1 / ((((SpeedPeriapsis + ManeuverSpeed) * (SpeedPeriapsis + ManeuverSpeed)) / (6.6743 * Math.pow(10,-11) * PlanetMass)) - (2 / (Periapsis * 1000 + PlanetRadius * 1000))) / 1000;
+                //Hier wird überprüft, die Periapsis des Orbits auch die des Manövers ist
+                if((SemiMajorAxisManeuver * 2) - (PlanetRadius * 2) - Periapsis >= Periapsis) {
+                    PeriapsisManeuver = Periapsis;
+                    ApoapsisManeuver = (SemiMajorAxisManeuver * 2) - (PlanetRadius * 2) - PeriapsisManeuver;
+                }
+                else {
+                    ApoapsisManeuver = Periapsis;
+                    PeriapsisManeuver = (SemiMajorAxisManeuver * 2) - (PlanetRadius * 2) - ApoapsisManeuver;
+                }
+                //Der Offset wird verwendet, um das Manöver am Bildschirm richtig zu positionieren
+                Offset = (SemiMajorAxis - SemiMajorAxisManeuver) * ConversionFactor;
+            }
+
+            //Die restlichen Werte werden berechnet
+            LinearEccManeuver = SemiMajorAxisManeuver - (PeriapsisManeuver + PlanetRadius);
+            SemiMinorAxisManeuver = Math.sqrt(SemiMajorAxisManeuver * SemiMajorAxisManeuver - LinearEccManeuver * LinearEccManeuver);
+            RatioAToBManeuver = SemiMajorAxisManeuver / SemiMinorAxisManeuver;
+
+            //Die Verhältnisse der Großen und Kleinen Halbachsen von Manöver zu Orbit
+            RatioManeuverToOrbitMajor = SemiMajorAxisManeuver / SemiMajorAxis;
+            RatioManeuverToOrbitMinor = SemiMinorAxisManeuver / SemiMinorAxis;
+
+            //Manöver wird gezeichnet
+            context.beginPath();
+            //Das Manöver wird um den Offset an der X-Achse verschoben. Die Radien bekommt man, indem man die des Orbits mit dem Verhältnis der jeweiligen Halbachsen multipliziert
+            context.ellipse((width / 2) + Offset, height / 2, EllipseRadiusX * RatioManeuverToOrbitMajor, EllipseRadiusY * RatioManeuverToOrbitMinor, 0, 0, 2 * Math.PI);
+            //Eigenschaften der Linie
+            context.lineWidth = width/2000;
+            //Strichliert
+            context.setLineDash([5, 5]);
+            context.strokeStyle = "lightblue";
+            context.stroke();
+        }
+        
+        //Beim Laden der Webseite wird einmal die Funktion Update aufgerufen
+        Update();
+        //Wenn man aus den Eingabefeldern klickt, wird geupdated
+        document.getElementById("ApInput").addEventListener("focusout", Update);
+        document.getElementById("PeInput").addEventListener("focusout", Update);
+
+        //Bei Änderung des Planeten wird alles neu gezeichnet
+        document.getElementById("planet").addEventListener("input", Update);
+
+        //Bei Änderung des Eingabemodus soll der Orbit gleich bleiben
+        document.getElementById("InputMode").addEventListener("input", function() {
+            if(document.getElementById("InputMode").value == "ApPe") { 
+                document.getElementById("ApInput").value = Apoapsis;
+                document.getElementById("PeInput").value = Periapsis;
+            }
+            else {
+                document.getElementById("ApInput").value = Apoapsis;
+                document.getElementById("PeInput").value = SpeedApoapsis;
+            }
+            Update();
+        });
+
+        //Wird Enter gedrückt wenn man in einem Eingabefeld ist, wird ein Update durchgeführt
+        document.getElementById("ApInput").addEventListener("keydown", function(key) {
+            if(key.keyCode == 13) {
+                Update();
+            }
+        });
+        document.getElementById("PeInput").addEventListener("keydown", function(key) {
+            if(key.keyCode == 13) {
+                Update();
+            }
+        });
+
+        //Wird ein Beispiel ausgewählt, werden die jeweiligen Werte eingegeben
+        document.getElementById("Examples").addEventListener("click", function() {
+            document.getElementById("InputMode").value = "ApPe";
+            switch(document.getElementById("Examples").value) {
+                case "iss":
+                    document.getElementById("ApInput").value = 408;
+                    document.getElementById("PeInput").value = 408;
+                    break;
+                case "sputnik":
+                    document.getElementById("ApInput").value = 939;
+                    document.getElementById("PeInput").value = 215;
+                    break;
+                case "geosynchronous":
+                    document.getElementById("ApInput").value = 35786;
+                    document.getElementById("PeInput").value = 35786;
+                    break;
+                case "moon":
+                    document.getElementById("ApInput").value = 405400;
+                    document.getElementById("PeInput").value = 363228.9;
+                    break;
+            }
+            Update();
+        });
+
+        //Wird auf den Knopf gedrückt, um das Manöver auszuführen, werden die Werte des Manövers eingegeben
+        document.getElementById("PerformManeuver").addEventListener("click", function() {
+            if(document.getElementById("ManeuverSpeed").value != 0) {
+                document.getElementById("InputMode").value = "ApPe";
+                document.getElementById("ApInput").value = ApoapsisManeuver;
+                document.getElementById("PeInput").value = PeriapsisManeuver;
+                document.getElementById("ManeuverSpeed").value = 0;
+                Update();
+            }
+        });
+
+        //Bei Eingabe wird hier ein Update durchgeführt
+        document.getElementById("ManeuverSpeed").addEventListener("input", Update);
+        document.getElementById("ManeuverApPe").addEventListener("input", Update);
+        //Wird das Fenster vergrößert/verkleinert wird alles neu gezeichnet
+        window.addEventListener("resize", Update);
+        
+    </script>
+
+</html>
